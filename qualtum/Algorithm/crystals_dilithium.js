@@ -1,3 +1,10 @@
+
+/**
+ * 
+ * open source under MIT
+ */
+
+
 import {
   cryptoSignKeypair,
   cryptoSign,
@@ -5,6 +12,9 @@ import {
   CryptoPublicKeyBytes,
   CryptoSecretKeyBytes,
 } from '@theqrl/dilithium5';
+
+
+
 
 /**
  * Generates a Dilithium5 Keypair.

@@ -1,3 +1,11 @@
+
+/**
+ * 
+ * open source under MIT
+ */
+
+
+
 import { QualtumClient } from "./lib/qualtum";
 import idl from "./idl.json";
 import { generateCDPair,signViaCD } from "./crystals_dilithium";

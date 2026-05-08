@@ -1,4 +1,4 @@
-# Qualtum: Post-Quantum Secure Vaults on Solana
+# Qualtum: Post-Quantum Secure Vaults on Solana  (open source)
 **Technical Whitepaper v1.0**
 
 ## 1. Executive Summary

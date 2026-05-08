@@ -1,3 +1,9 @@
+/**
+ * 
+ * open source under MIT
+ */
+
+
 import {
   cryptoSignKeypair,
   cryptoSign,

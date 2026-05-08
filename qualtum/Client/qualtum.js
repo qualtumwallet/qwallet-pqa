@@ -1,3 +1,9 @@
+/**
+ * 
+ * open source under MIT
+ */
+
+
 import * as anchor from "@coral-xyz/anchor";
 import { 
     Connection, 
@@ -7,6 +13,9 @@ import {
 } from "@solana/web3.js";
 
 import idl from "./idl.json";
+
+
+
 
 export class QualtumClient {
     constructor(programId, idl, rpcUrl = "https://api.mainnet.solana.com") {

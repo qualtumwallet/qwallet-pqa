@@ -1,3 +1,10 @@
+/**
+ * 
+ * open source under MIT
+ */
+
+
+
 import * as anchor from "@coral-xyz/anchor";
 import { 
     Connection, 
