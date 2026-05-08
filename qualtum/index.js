@@ -8,8 +8,8 @@
 
 import { Keypair } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
-import { QualtumClient } from "./Client/qualtum.js"; 
-import idl from "./Client/idl.json";
+import { QualtumClient } from "./pqsdk/lib/qualtum.js"; 
+import idl from "./pqsdk/lib/idl.json";
 import crypto from "crypto";
 import fs from "fs";
 

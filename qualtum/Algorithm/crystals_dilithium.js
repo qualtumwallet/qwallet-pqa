@@ -1,9 +1,7 @@
-
 /**
  * 
  * open source under MIT
  */
-
 
 import {
   cryptoSignKeypair,
@@ -14,79 +12,139 @@ import {
 } from '@theqrl/dilithium5';
 
 
+// Encoding Helpers 
 
+/**
+ * Normalizes any message input to a Uint8Array with consistent encoding.
+ * string      UTF-8 encoded bytes
+ * Buffer      wrapped as Uint8Array (zero-copy)
+ * Uint8Array  passed through
+ * ArrayBuffer wrapped as Uint8Array
+ * Anything else throws immediately rather than silently misbehaving.
+ */
+
+
+function normalizeMessage(msg, argName = "msg") {
+  if (typeof msg === "string") {
+    if (msg.length === 0) {
+      throw new Error(`${argName}: message string must not be empty.`);
+    }
+    return new TextEncoder().encode(msg);
+  }
+
+  if (msg instanceof Uint8Array) {          // covers Buffer (subclass of Uint8Array)
+    if (msg.length === 0) {
+      throw new Error(`${argName}: message buffer must not be empty.`);
+    }
+    return msg instanceof Buffer
+      ? new Uint8Array(msg.buffer, msg.byteOffset, msg.byteLength) 
+      : msg;
+  }
+
+  if (msg instanceof ArrayBuffer) {
+    if (msg.byteLength === 0) {
+      throw new Error(`${argName}: ArrayBuffer message must not be empty.`);
+    }
+    return new Uint8Array(msg);
+  }
+
+  throw new Error(
+    `${argName}: unsupported message type "${typeof msg}". ` +
+    `Expected string, Uint8Array, Buffer, or ArrayBuffer.`
+  );
+}
+
+// Key Generation
 
 /**
  * Generates a Dilithium5 Keypair.
- * @returns {Object} An object containing the public and secret keys.
+ * @returns {{ pubickey and secrerkey : Uint8Array, secretkey: Uint8Array }}
  * @throws {Error} If key generation fails.
  */
 export function generateCDPair() {
   try {
-    const pk = new Uint8Array(CryptoPublicKeyBytes);
-    const sk = new Uint8Array(CryptoSecretKeyBytes);
+    const publickeybytes = new Uint8Array(CryptoPublicKeyBytes);
+    const secretkeybytes = new Uint8Array(CryptoSecretKeyBytes);
 
-    const result = cryptoSignKeypair(pk, sk);
-    
+    const result = cryptoSignKeypair(null,publickeybytes, secretkeybytes);
+
     if (result !== undefined) {
       throw new Error(`Keypair generation failed with code: ${result}`);
     }
 
-    return { pk, sk };
+    
+    return { publickeybytes, secretkeybytes };
   } catch (error) {
     console.error('[Crypto] Failed to generate Dilithium5 keypair:', error);
     throw new Error('Keypair generation failed. Ensure the library is initialized correctly.');
   }
 }
 
+// Sign 
+
+
 /**
- * Signs a message using a Dilithium5 Secret Key.
- * @param {string|Uint8Array} msg =The message to sign.
- * @param {Uint8Array} sk = The secret key buffer.
- * @returns {Uint8Array} The signed message.
- * @throws {Error} If signing fails or inputs are invalid.
+ * Signs a message using a Dilithium5 secret key.
+ * @param {string|Uint8Array|Buffer|ArrayBuffer} msg  Message to sign.
+ * @param {Uint8Array} secretkey   Dilithium5 secret key.
+ * @returns {Uint8Array} Signed message blob.
+ * @throws {Error} If inputs are invalid or signing fails.
  */
-export function signViaCD(msg, sk) {
-  // Validate Secret Key length
-  if (!(sk instanceof Uint8Array) || sk.length !== CryptoSecretKeyBytes) {
-    throw new Error(`Invalid Secret Key: Expected Uint8Array of ${CryptoSecretKeyBytes} bytes.`);
+export function signViaCD(msg, secretkey) {
+  // Validate secret key
+  if (!(secretkey instanceof Uint8Array) || secretkey.length !== CryptoSecretKeyBytes) {
+    throw new Error(
+      `Invalid secret key: expected Uint8Array of ${CryptoSecretKeyBytes} bytes, ` +
+      `got ${secretkey?.constructor?.name ?? typeof secretkey} of length ${secretkey?.length ?? "unknown"}.`
+    );
   }
 
-  try {
-    const message = typeof msg === 'string' ? new TextEncoder().encode(msg) : msg;
-    
-    // cryptoSign typically returns the signature or a combined signed message
-    const signedMessage = cryptoSign(message, sk, false);
+  // Normalize message throws on bad type or empty input
+  const message = normalizeMessage(msg, "msg");
 
-    if (!signedMessage) {
+  try {
+    const signedMessage = cryptoSign(message, secretkey, false);
+
+    if (!signedMessage || signedMessage.length === 0) {
       throw new Error('Cryptographic signing returned an empty result.');
     }
 
     return signedMessage;
   } catch (error) {
-    console.error('[Crypto] Signing Error:', error);
-    throw new Error('Failed to sign message. Verify secret key integrity.');
+    console.error('[Crypto] Signing error:', error);
+    throw new Error(`Failed to sign message: ${error.message}`);
   }
 }
 
+// Verify
+
 /**
- * Verifies a Dilithium5 signature.
- * @param {Uint8Array} signedMsg = The signed message buffer.
- * @param {Uint8Array} pk = The public key buffer.
- * @returns {Uint8Array|null} The original message if valid, null otherwise.
+ * Verifies a Dilithium5 signature and returns the original message.
+ * @param {Uint8Array} signedMsg    The signed message buffer from signViaCD.
+ * @param {Uint8Array} publickey    Dilithium5 public key.
+ * @returns {Uint8Array|null}       Original message bytes if valid, null if invalid.
+ * @throws {Error} If inputs are structurally invalid.
  */
-export function verifyCDSignature(signedMsg, pk) {
-  
-  if (!(pk instanceof Uint8Array) || pk.length !== CryptoPublicKeyBytes) {
-    throw new Error(`Invalid Public Key: Expected Uint8Array of ${CryptoPublicKeyBytes} bytes.`);
+
+export function verifyCDSignature(signedMsg, pubickey) {
+  // Validate public key
+  if (!(publickey instanceof Uint8Array) || publickey.length !== CryptoPublicKeyBytes) {
+    throw new Error(
+      `Invalid public key: expected Uint8Array of ${CryptoPublicKeyBytes} bytes, ` +
+      `got ${publickey?.constructor?.name ?? typeof publickey} of length ${publickey?.length ?? "unknown"}.`
+    );
+  }
+
+  // Validate signed message
+  if (!(signedMsg instanceof Uint8Array) || signedMsg.length === 0) {
+    throw new Error("Invalid signedMsg: expected a non-empty Uint8Array.");
   }
 
   try {
-    const openedMessage = cryptoSignOpen(signedMsg, pk);
-    return openedMessage || null;
+    const opened = cryptoSignOpen(signedMsg, publickey);
+    return opened ?? null;
   } catch (error) {
     console.warn('[Crypto] Verification failed:', error.message);
     return null;
   }
-  
 }
