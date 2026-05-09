@@ -6,13 +6,17 @@
 
 
 
-import { QualtumClient } from "./lib/qualtum";
+import { QualtumClient } from "./qualtum";
 import idl from "./idl.json";
-import { generateCDPair,signViaCD } from "./crystals_dilithium";
+import { generateCDPair,signViaCD } from "./lib/crystals_dilithium";
 import * as crypto from "crypto";
+import { handleCreate } from "./lib/keypair";
+import { deriveWalletFromMnemonic,decryptMnemonic } from "./lib/mnemonic";
+import * as fs from "fs"
 
+import { getSeed } from './lib/mnemonic';
 
-
+SEED_PATH="./seed.txt"
 
 /**
  * @param {Object} config 
@@ -25,27 +29,53 @@ import * as crypto from "crypto";
  */
 
 
-async function CDkeypairhelper() {
-    // file exists
-    if (fs.existsSync(KEY_FILE_PATH)) {
-        // Load and return the buffer
-        console.log("Loading existing secret key from file...");
-        return fs.readFileSync(KEY_FILE_PATH);
-    } else {
-        // Generate new pair
-        console.log("No key found. Generating new CRYSTALS-Dilithium pair...");
-        const { sk } = GenerateCDPair();
+
+
+
+
+async function  CrystalDilithium(accont_config) {
+
+
+
+  if (accont_config.op=="create"){
+
+
+    try {
+
+        const seed=await getSeed()
+        let {publickey,secretkey}=generateCDPair(seed)
+        if (fs.existsSync(SEED_PATH)) {
+            console.log("Seed File already exists");
+        } else {
+        fs.writeFileSync(SEED_PATH, returnedseed, "utf8");
+            console.log("Seed File created");
+        }
+        return {publickey,secretkey}
         
-        // Buffer and save it
-        const skBuffer = Buffer.from(sk);
-        fs.writeFileSync(KEY_FILE_PATH, skBuffer);
-        
-        console.log(`New secret key saved to ${KEY_FILE_PATH}`);
-        return skBuffer;
     }
+    catch(e){
+        throw Error("Error in account generation")
+    }
+
+    }
+    else if (accont_config.op=="load") {
+
+
+    if (fs.existsSync(SEED_PATH)) {
+
+        const data = fs.readFileSync(SEED_PATH, "utf8");
+        console.log("Loaded data:");
+        let {publickey,secretkey}=generateCDPair(data)
+        return {publickey,secretkey}
+
+    } else {
+        console.log("File does not exist");
+    }
+
+    }
+
+
 }
-
-
 
 export async function pqSDK(config) {
     if (config.chain !== "solana") {
@@ -61,10 +91,9 @@ export async function pqSDK(config) {
         case "setup": {
         
 
-            let sk = await getOrCreateSecretKey();
-
+            let {publickey,secretkey} = await CrystalDilithium({op:"setup"})
             //Sign 
-            let signature = SignviaCD(config.msg, sk);
+            let signature = SignviaCD(config.msg,secretkey);
             // Hash the signature
             let hash_1 = crypto.createHash("sha256").update(signature).digest();
             let hash_2=crypto.createHash("sha256").update(hash_1).digest("hex");
@@ -89,12 +118,10 @@ export async function pqSDK(config) {
         }
 
         case "withdraw": {
-
-
-
-            let sk = await getOrCreateSecretKey();
+        
+            let {publickey,secretkey} = await CrystalDilithium({op:"load"})
             //Sign 
-            let signature = SignviaCD(config.msg, sk);
+            let signature = SignviaCD(config.msg, secretkey);
             // Hash the signature
             let hash_1 = crypto.createHash("sha256").update(signature).digest("hex");
 

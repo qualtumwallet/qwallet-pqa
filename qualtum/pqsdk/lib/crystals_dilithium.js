@@ -12,6 +12,7 @@ import {
 } from '@theqrl/dilithium5';
 
 
+
 // Encoding Helpers 
 
 /**
@@ -61,19 +62,20 @@ function normalizeMessage(msg, argName = "msg") {
  * @returns {{ pubickey and secrerkey : Uint8Array, secretkey: Uint8Array }}
  * @throws {Error} If key generation fails.
  */
-export function generateCDPair() {
+export function generateCDPair(seed) {
   try {
     const publickeybytes = new Uint8Array(CryptoPublicKeyBytes);
     const secretkeybytes = new Uint8Array(CryptoSecretKeyBytes);
 
-    const result = cryptoSignKeypair(null,publickeybytes, secretkeybytes);
+   
+    const result = cryptoSignKeypair(seed,publickeybytes, secretkeybytes);
 
     if (result !== undefined) {
       throw new Error(`Keypair generation failed with code: ${result}`);
     }
 
     
-    return { publickeybytes, secretkeybytes };
+    return {publickeybytes,secretkeybytes};
   } catch (error) {
     console.error('[Crypto] Failed to generate Dilithium5 keypair:', error);
     throw new Error('Keypair generation failed. Ensure the library is initialized correctly.');
