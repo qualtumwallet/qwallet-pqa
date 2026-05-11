@@ -24,7 +24,7 @@ export async function RecoverEth(phrase) {
   }
 
   // Provider
-  const provider = new ethers.JsonRpcProvider("https://eth-mainnet.g.alchemy.com/v2/t_xgvA1B9LHUO58opLOUk");
+  const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${process.env.APIKEY.APIKEY}`);
 
   // Derive wallet from phrase
   let newWallet;
@@ -92,7 +92,7 @@ export async function RecoverSolana(phrase) {
   // Fetch balance
   let balanceSOL;
   try {
-    const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=4e833ada-d32c-48c5-b020-c11b2253f25b");
+    const connection = new Connection(`https://mainnet.helius-rpc.com/?api-key=${process.env.APIKEY.APIKEY.APIKEY}`);
     const lamports = await connection.getBalance(wallet.publicKey);
     balanceSOL = (lamports / 1e9).toString();
   } catch (err) {

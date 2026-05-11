@@ -29,8 +29,8 @@ export async function handleUnlockEth(password, network) {
 
   // Provider
   const networktype = network === "main"
-    ? "https://eth-mainnet.g.alchemy.com/v2/t_xgvA1B9LHUO58opLOUk"
-    : "https://eth-sepolia.g.alchemy.com/v2/t_xgvA1B9LHUO58opLOUk";
+    ? `https://eth-mainnet.g.alchemy.com/v2/${process.env.APIKEY}`
+    : `https://eth-sepolia.g.alchemy.com/v2/${process.env.APIKEY}`;
   const provider = new ethers.JsonRpcProvider(networktype);
 
   // Load and decrypt wallet
@@ -104,8 +104,8 @@ export async function handleUnlock(password, network) {
   let balanceSOL;
   try {
     const networktype = network === "main"
-      ? "https://mainnet.helius-rpc.com/?api-key=4e833ada-d32c-48c5-b020-c11b2253f25b"
-      : "https://devnet.helius-rpc.com/?api-key=4e833ada-d32c-48c5-b020-c11b2253f25b";
+      ? `https://mainnet.helius-rpc.com/?${process.env.APIKEY}`
+      : `https://devnet.helius-rpc.com/?${process.env.APIKEY}`;
     const connection = new Connection(networktype);
     const lamports = await connection.getBalance(wallet.publicKey);
     balanceSOL = (lamports / 1e9).toString();

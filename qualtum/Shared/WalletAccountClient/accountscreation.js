@@ -98,8 +98,8 @@ export async function handleCreateEth(password, network) {
 
   // Provider
   const rpcUrl = network === "main"
-    ? "https://mainnet.infura.io/v3/YOUR_KEY"
-    : "https://sepolia.infura.io/v3/YOUR_KEY";
+    ? `https://mainnet.infura.io/v3/${process.env.APIKEY}`
+    : `https://sepolia.infura.io/v3/${process.env.APIKEY}`;
   const provider = new ethers.JsonRpcProvider(rpcUrl);
 
   // Generate wallet
