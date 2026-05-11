@@ -2,8 +2,8 @@ import { Keypair } from "@solana/web3.js";
 import * as bip39 from "bip39";
 
 import { deriveWalletFromMnemonic, encryptMnemonic, decryptMnemonic } from "../lib/mnemonic";
-
-import { getDB } from "./getdb";
+import {ethers} from "ethers"
+import { getDB } from "../../Solana/WalletAccountClient/getdb";
 
 
 
@@ -70,5 +70,66 @@ export async function handleCreate(password) {
     pubkey:   wallet.publicKey.toBase58(),
     mnemonic: mnemonic,  //Shown to user temporarily
   
+  };
+}
+
+
+
+/**
+ * Creates a brand-new Ethereum wallet, persists the encrypted JSON and
+ * ephemeral session key to storage, and returns the address + mnemonic.
+ *
+ * @param {string} password - User-supplied password used to encrypt the wallet.
+ * @param {string} network  - "main" or "dev"
+ *
+ * @returns {Promise<{ pubkey: string, mnemonic: string, balance: string }>}
+ * @throws {WalletCreationError}
+ */
+export async function handleCreateEth(password, network) {
+
+  // Input validation
+  if (!password || typeof password !== "string" || password.trim().length === 0) {
+    throw new WalletCreationError("A non-empty password is required to create a wallet.");
+  }
+
+  if (!["main", "dev"].includes(network)) {
+    console.warn(`[handleCreateEth] Unknown network "${network}", defaulting to dev.`);
+  }
+
+  // Provider
+  const rpcUrl = network === "main"
+    ? "https://mainnet.infura.io/v3/YOUR_KEY"
+    : "https://sepolia.infura.io/v3/YOUR_KEY";
+  const provider = new ethers.JsonRpcProvider(rpcUrl);
+
+  // Generate wallet
+  let wallet, encryptedJson;
+
+  try {
+    wallet = ethers.Wallet.createRandom();
+
+    if (!wallet.mnemonic) {
+      throw new Error("Critical error: wallet was generated without a mnemonic.");
+    }
+  } catch (err) {
+    throw new WalletCreationError("Failed to generate Ethereum wallet.", err);
+  }
+
+  // Encrypt and persist
+ 
+  try {
+    encryptedJson = await wallet.encrypt(password);
+    await db.put('keyval', encryptedJson, "wallet");
+    await db.put('keyval', wallet.signingKey.privateKey, "cwallet");
+  } catch (err) {
+    throw new WalletCreationError("Failed to encrypt or persist wallet.", err);
+  }
+
+  
+
+  // Return wallet information
+  return {
+    pubkey:   newWallet.address,
+    mnemonic: newWallet.mnemonic.phrase,   // shown to user temporarily
   };
 }

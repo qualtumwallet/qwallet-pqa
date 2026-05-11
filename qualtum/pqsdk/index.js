@@ -5,8 +5,12 @@
  */
 
 
-import { QualtumClient } from "./qualtum";
-import idl from "./idl.json";
+import { QualtumClient } from "./lib/qualtum";
+import { QualtumClientEth } from "./lib/qualtumeth";
+
+import idl from "./lib/idl.json"
+import abi from "./lib/abi.json"
+
 import { generateCDPair,signViaCD } from "./lib/crystals_dilithium";
 import * as crypto from "crypto";
 import { handleCreate } from "./lib/keypair";
@@ -14,7 +18,8 @@ import { deriveWalletFromMnemonic,decryptMnemonic } from "./lib/mnemonic";
 import * as fs from "fs"
 import { getSeed } from './lib/mnemonic';
 
-
+import artifact from "../Ethereum/artifacts/contracts/Qualtum.sol/Qualtum.json";
+const abi = artifact.abi;
 
 /**
  * @param {Object} config 
@@ -161,7 +166,7 @@ async function decryptSeed(blob, passcode) {
  * @returns {Promise<{ publickey: Uint8Array, secretkey: Uint8Array }>}
  * @throws {CrystalError}
  */
-export async function CrystalDilithium(account_config) {
+async function CrystalDilithium(account_config) {
 
   //Input validation
   const { op, passcode } = account_config;
@@ -227,22 +232,27 @@ export async function CrystalDilithium(account_config) {
 
 
 
-
+/*
 export async function pqSDK(config) {
-    if (config.chain !== "solana") {
-        throw new Error("Unsupported chain");
-    }
 
+
+  
+    
     // Initialize the client
-    const programId = config.programId || "";
-    const rpcUrl = config.rpcUrl || "https://api.mainnet.solana.com";
-    const client = new QualtumClient(programId, idl, rpcUrl);
-
-    switch (config.op) {
+  
+      switch (config.op) {
         case "setup": {
         
 
-            let {publickey,secretkey} = await CrystalDilithium({op:"setup",passcode:config.passcode})
+
+           let {publickey,secretkey} = await CrystalDilithium({op:"setup",passcode:config.passcode})
+
+          
+            const programId = config.programId || "";
+            const rpcUrl = config.rpcUrl || "https://api.mainnet.solana.com";
+            const client = new QualtumClient(programId, idl, rpcUrl);
+
+            
             //Sign 
             let signature = SignviaCD(config.msg,secretkey);
             // Hash the signature
@@ -277,6 +287,79 @@ export async function pqSDK(config) {
             let hash_1 = crypto.createHash("sha256").update(signature).digest("hex");
 
             const res = await client.withdraw(config.wallet, config.amount,hash_1);
+
+            return {
+                success: res.success,
+                status: res.status,
+                tx: res.tx
+            };
+        }
+
+        default:
+            return { success: false, status: "Invalid operation" };
+    }
+
+
+  
+}
+
+*/
+
+
+
+export async function pqSDK(config) {
+
+    const chain = config.chain || "solana";
+
+    let client;
+    if (chain === "solana") {
+        const rpcUrl = config.rpcUrl || "https://api.mainnet.solana.com";
+        client = new QualtumClient(config.programId, idl, rpcUrl);
+    } else if (chain === "ethereum") {
+        const rpcUrl = config.rpcUrl || "https://mainnet.infura.io/v3/YOUR_KEY";
+        client = new QualtumClientEth(config.contractAddress, abi, rpcUrl);
+    }
+
+    switch (config.op) {
+        case "setup": {
+            let { publickey, secretkey } = await CrystalDilithium({ op: "create", passcode: config.passcode });
+
+            let signature = SignviaCD(config.msg, secretkey);
+            let hash_1 = crypto.createHash("sha256").update(signature).digest();
+            let hash_2 = crypto.createHash("sha256").update(hash_1).digest("hex");
+
+            const res = chain === "solana"
+                ? await client.initVault(config.wallet, hash_2)
+                : await client.initVault(config.signer, hash_2);
+
+            return {
+                success: res.success,
+                sk: res.success ? res.sk : null,
+                status: res.status,
+                tx: res.tx
+            };
+        }
+
+        case "deposit": {
+            const res = chain === "solana"
+                ? await client.deposit(config.wallet, config.amount)
+                : await client.deposit(config.signer, config.amount);
+
+            return {
+                success: res.success,
+                status: res.status,
+                tx: res.tx
+            };
+        }
+
+        case "withdraw": {
+            let { publickey, secretkey } = await CrystalDilithium({ op: "load", passcode: config.passcode });
+            let signature = SignviaCD(config.msg, secretkey);
+            let hash_1 = crypto.createHash("sha256").update(signature).digest("hex");
+
+            const res = chain === "solana"
+                ? await client.withdraw(config.wallet, config.amount, hash_1)
+                : await client.withdraw(config.wallet, config.amount, hash_1);
 
             return {
                 success: res.success,
