@@ -128,7 +128,7 @@ export function signViaCD(msg, secretkey) {
  * @throws {Error} If inputs are structurally invalid.
  */
 
-export function verifyCDSignature(signedMsg, pubickey) {
+export function verifyCDSignature(signedMsg, publickey) {
   // Validate public key
   if (!(publickey instanceof Uint8Array) || publickey.length !== CryptoPublicKeyBytes) {
     throw new Error(
